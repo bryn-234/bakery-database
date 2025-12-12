@@ -25,8 +25,8 @@ index_test/ -- index performance tests
 
 ## Future Improvements
 - Flask-based frontend
-- Market basket analysis
 - Stored procedures and triggers
+- More indexes
 
 ## Deployment
 The database is hosted on Neon (PostgreSQL).

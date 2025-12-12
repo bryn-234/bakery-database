@@ -13,7 +13,9 @@ It models sales, customers, employees, products, and inventory based on a
 
 ## Project Structure
 create_tables/ -- table schemas and constraints
+
 analysis_queries/ -- analytical SQL queries
+
 index_test/ -- index performance tests
 
 ## Technologies

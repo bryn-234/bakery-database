@@ -1,0 +1,94 @@
+-- ==========================================
+-- Indexing vs. Non-Indexing Benchmark Tests
+-- Used for Error Analysis in Final Report
+-- ==========================================
+
+-- NOTE:
+-- This file assumes *_noindex tables were created separately by duplicating the
+-- original tables without constraints or indexes:
+--   CREATE TABLE schedule_noindex AS TABLE schedule;
+--   CREATE TABLE employee_noindex AS TABLE employee;
+--   CREATE TABLE sales_item_noindex AS TABLE sales_item;
+--   CREATE TABLE product_info_noindex AS TABLE product_info;
+
+
+-- ==========================================
+-- TEST 1: Employee Total Hours (NON-INDEXED VERSION)
+-- Corresponds to the 147 ms measurement in the Error Analysis section.
+-- ==========================================
+EXPLAIN ANALYZE
+SELECT 
+    e.employee_id, 
+    e.name, 
+    SUM(EXTRACT(EPOCH FROM (s.shift_end - s.shift_start)) / 3600) AS total_hours
+FROM schedule_noindex s
+JOIN employee_noindex e 
+    ON e.employee_id = s.employee_id
+GROUP BY e.employee_id, e.name
+ORDER BY total_hours DESC;
+
+
+-- ==========================================
+-- TEST 1 (Indexed Version) - ORIGINAL QUERY
+-- Corresponds to the 104 ms measurement.
+-- ==========================================
+EXPLAIN ANALYZE
+SELECT 
+    e.employee_id, 
+    e.name, 
+    SUM(EXTRACT(EPOCH FROM (s.shift_end - s.shift_start)) / 3600) AS total_hours
+FROM schedule s
+JOIN employee e 
+    ON e.employee_id = s.employee_id
+GROUP BY e.employee_id, e.name
+ORDER BY total_hours DESC;
+
+
+
+-- ==========================================
+-- TEST 2: Frequent Product Pairs (NON-INDEXED VERSION)
+-- Corresponds to the 165 ms measurement.
+-- ==========================================
+EXPLAIN ANALYZE
+SELECT 
+    p1.name AS product_a,
+    p2.name AS product_b,
+    COUNT(*) AS count_together
+FROM sales_item_noindex a
+JOIN sales_item_noindex b 
+    ON a.sale_id = b.sale_id
+   AND a.product_id < b.product_id
+JOIN product_info_noindex p1 
+    ON p1.product_id = a.product_id
+JOIN product_info_noindex p2 
+    ON p2.product_id = b.product_id
+GROUP BY p1.name, p2.name
+ORDER BY count_together DESC
+LIMIT 10;
+
+
+-- ==========================================
+-- TEST 2 (Indexed Version) - ORIGINAL QUERY
+-- Corresponds to the 107 ms measurement.
+-- ==========================================
+EXPLAIN ANALYZE
+SELECT 
+    p1.name AS product_a,
+    p2.name AS product_b,
+    COUNT(*) AS count_together
+FROM sales_item a
+JOIN sales_item b 
+    ON a.sale_id = b.sale_id
+   AND a.product_id < b.product_id
+JOIN product_info p1 
+    ON p1.product_id = a.product_id
+JOIN product_info p2 
+    ON p2.product_id = b.product_id
+GROUP BY p1.name, p2.name
+ORDER BY count_together DESC
+LIMIT 10;
+
+
+-- ==========================================
+-- END OF INDEXING BENCHMARK TESTS
+-- ==========================================

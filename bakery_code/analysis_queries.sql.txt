@@ -1,0 +1,196 @@
+-- ===============================================================
+-- Bakery Database: Feature & Analytical Queries
+-- These queries demonstrate the core functionality of our system,
+-- including sales analytics, customer behavior, revenue tracking,
+-- market basket insights, and inventory visibility.
+-- ===============================================================
+
+
+-- ===============================================================
+-- 1. Total sales count for each product (all time)
+-- Identifies the most frequently purchased items.
+-- ===============================================================
+SELECT p.name, COUNT(si.product_id) AS total_sales
+FROM sales_item si
+JOIN product_info p ON si.product_id = p.product_id
+GROUP BY p.product_id, p.name
+ORDER BY total_sales DESC;
+
+
+-- ===============================================================
+-- 2. Customers who have bought more than one unique item
+-- Helps analyze repeat buying behavior and customer engagement.
+-- ===============================================================
+SELECT 
+    c.customer_id,
+    c.name,
+    COUNT(DISTINCT s.sale_id) AS total_purchases
+FROM customer c
+JOIN sales s ON c.customer_id = s.customer_id
+JOIN sales_item si ON s.sale_id = si.sale_id
+GROUP BY c.customer_id, c.name
+HAVING COUNT(DISTINCT si.product_id) > 1
+ORDER BY total_purchases DESC;
+
+
+-- ===============================================================
+-- 3. Top products by total revenue generated
+-- Calculates item-level contributions to overall revenue.
+-- ===============================================================
+SELECT 
+    p.product_id,
+    p.name,
+    COUNT(*) * p.price AS total_revenue
+FROM product_info p
+JOIN sales_item si ON p.product_id = si.product_id
+GROUP BY p.product_id, p.name, p.price
+ORDER BY total_revenue DESC;
+
+
+-- ===============================================================
+-- 4. Total cost per sale (basket value)
+-- Computes the monetary value of each transaction.
+-- ===============================================================
+SELECT 
+    s.sale_id,
+    SUM(p.price) AS total_cost
+FROM sales s
+JOIN sales_item si ON s.sale_id = si.sale_id
+JOIN product_info p ON p.product_id = si.product_id
+GROUP BY s.sale_id;
+
+
+-- ===============================================================
+-- 5. Product purchase frequency ranking
+-- Similar to Query 1 but grouped only by product name.
+-- ===============================================================
+SELECT 
+    p.name,
+    COUNT(*) AS times_bought
+FROM product_info p
+JOIN sales_item si ON p.product_id = si.product_id
+GROUP BY p.name
+ORDER BY times_bought DESC;
+
+
+-- ===============================================================
+-- 6. Revenue share for each product (% of total revenue)
+-- Used to identify high-value items in revenue distribution.
+-- ===============================================================
+SELECT 
+    p.name,
+    COUNT(*) * p.price AS revenue,
+    ROUND(
+        (COUNT(*) * p.price) * 100.0 /
+        (SELECT SUM(p2.price)
+         FROM sales_item si2
+         JOIN product_info p2 ON p2.product_id = si2.product_id),
+    2) AS percent_of_total
+FROM product_info p
+JOIN sales_item si ON p.product_id = si.product_id
+GROUP BY p.name, p.price
+ORDER BY percent_of_total DESC;
+
+
+-- ===============================================================
+-- 7. Best-selling item per day
+-- Identifies the single most popular product for each date.
+-- PostgreSQL DISTINCT ON is used for efficient grouping.
+-- ===============================================================
+SELECT DISTINCT ON (s.sale_date)
+    s.sale_date,
+    p.name AS top_item,
+    COUNT(*) AS count
+FROM sales s
+JOIN sales_item si ON s.sale_id = si.sale_id
+JOIN product_info p ON p.product_id = si.product_id
+GROUP BY s.sale_date, p.name
+ORDER BY s.sale_date, count DESC;
+
+
+-- ===============================================================
+-- 8. Sales that contain more than five items
+-- Highlights large, high-value transactions.
+-- ===============================================================
+SELECT 
+    s.sale_id,
+    COUNT(*) AS num_items
+FROM sales s
+JOIN sales_item si ON s.sale_id = si.sale_id
+GROUP BY s.sale_id
+HAVING COUNT(*) > 5;
+
+
+-- ===============================================================
+-- 9. Products that have never been purchased
+-- Useful for inventory management and menu optimization.
+-- ===============================================================
+SELECT 
+    p.product_id,
+    p.name
+FROM product_info p
+LEFT JOIN sales_item si ON p.product_id = si.product_id
+WHERE si.product_id IS NULL;
+
+
+-- ===============================================================
+-- 10. Sales count by hour of day
+-- Supports time-based operational insights (rush hours, staffing needs).
+-- ===============================================================
+SELECT 
+    DATE_PART('hour', sale_time) AS hour_of_day,
+    COUNT(*) AS num_sales
+FROM sales
+GROUP BY hour_of_day
+ORDER BY num_sales DESC;
+
+
+-- ===============================================================
+-- 11. Daily total revenue
+-- Tracks revenue trends across the full time window.
+-- ===============================================================
+SELECT 
+    s.sale_date,
+    SUM(p.price) AS daily_revenue
+FROM sales s
+JOIN sales_item si ON s.sale_id = si.sale_id
+JOIN product_info p ON p.product_id = si.product_id
+GROUP BY s.sale_date
+ORDER BY s.sale_date;
+
+
+-- ===============================================================
+-- 12. 7-day moving average of revenue
+-- Demonstrates window function usage for smoothing trends.
+-- ===============================================================
+SELECT
+    sale_date,
+    SUM(price) AS daily_revenue,
+    AVG(SUM(price)) OVER (
+        ORDER BY sale_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS weekly_avg
+FROM sales s
+JOIN sales_item si ON s.sale_id = si.sale_id
+JOIN product_info p ON p.product_id = si.product_id
+GROUP BY sale_date
+ORDER BY sale_date;
+
+
+-- ===============================================================
+-- 13. List all products with price and inventory quantity
+-- Provides visibility into item availability (inventory table is partial).
+-- ===============================================================
+SELECT 
+    p.product_id,
+    p.name,
+    p.price,
+    i.quantity_in_stock
+FROM product_info p
+LEFT JOIN inventory i ON p.product_id = i.product_id
+ORDER BY p.product_id;
+
+
+-- ===========================
+-- End of Feature Queries
+-- ===========================

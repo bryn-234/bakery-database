@@ -27,3 +27,9 @@ index_test/ -- index performance tests
 - Flask-based frontend
 - Market basket analysis
 - Stored procedures and triggers
+
+## Deployment
+The database is hosted on Neon (PostgreSQL).
+All schema definitions and queries are version-controlled in this repository.
+SQL scripts are executed against the Neon instance for testing and analysis.
+
